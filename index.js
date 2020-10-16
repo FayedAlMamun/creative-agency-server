@@ -14,6 +14,7 @@ app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 app.use(cors());
 app.use(express.static('service'));
+app.use(express.static('reviews'));
 app.use(fileUpload());
 const client = new MongoClient(uri, { useNewUrlParser: true,useUnifiedTopology: 
     true });
@@ -26,30 +27,30 @@ client.connect(err => {
     const file=req.files.file;
     const title=req.body.title;
     const description=req.body.description;
-    const filePath=`${__dirname }/service/${file.name}`
-    file.mv(filePath,err=>{
-      if(err){
-        console.log(err)
-         res.status(5000).send({msg:'failed'});
-      }
-      const newImg=fs.readFileSync(filePath);
+    // const filePath=`${__dirname }/service/${file.name}`
+    // file.mv(filePath,err=>{
+    //   if(err){
+    //     console.log(err)
+    //      res.status(5000).send({msg:'failed'});
+    //   }
+      const newImg=file.data;
       const enImg=newImg.toString('base64');
       var image={
         contentType:req.files.file.mimetype,
         size:req.files.file.size,
-        img:Buffer(enImg,'base64')
+        img:Buffer.from(enImg,'base64')
       };
       serviceCollection.insertOne({title,description,image})
       .then(result=>{
-        fs.remove(filePath,error=>{
-          if(error){
-            res.status(5000).send({msg:'failed'})
-          }
+        // fs.remove(filePath,error=>{
+        //   if(error){
+        //     res.status(5000).send({msg:'failed'})
+        //   }
           res.send(result.insertedCount>0);
-        })
+       // })
       })
 
-    })
+   // })
   })
   app.get('/services',(req,res)=>{
     serviceCollection.find({})
@@ -58,14 +59,35 @@ client.connect(err => {
     })  
    })
    app.post('/addReview', (req,res)=>{
+    const file=req.files.file;
     const name=req.body.name;
     const description=req.body.description;
     const designation=req.body.designation;
-    reviewCollection.insertOne({name,description,designation})
+   // const filePath=`${__dirname }/service/${file.name}`
+    // file.mv(filePath,err=>{
+    //   if(err){
+    //     console.log(err)
+    //      res.status(5000).send({msg:'failed'});
+    //   }
+      const newImg=file.data;
+      const enImg=newImg.toString('base64');
+      var image={
+        contentType:req.files.file.mimetype,
+        size:req.files.file.size,
+        img:Buffer.from(enImg,'base64')
+      };
+    reviewCollection.insertOne({name,description,designation,image})
     .then(result=>{
-      res.send(result.insertedCount>0)
+      // fs.remove(filePath,error=>{
+      //   if(error){
+      //     res.status(5000).send({msg:'failed'})
+      //   }
+        res.send(result.insertedCount>0);
+     // })
     })
-   })
+
+  //})
+})
    app.get('/services/:id',(req,res)=>{
     const id=req.params.id;
     serviceCollection.find({_id:ObjectID(id)})
@@ -87,6 +109,12 @@ client.connect(err => {
       res.send(document)
     })  
    })
+   app.get('/orderList',(req,res)=>{
+    ordersCollection.find({})
+    .toArray((err,document)=>{
+      res.send(document)
+    })  
+   })
    app.post('/addAdmin', (req,res)=>{
     const email=req.body.email;
     adminCollection.insertOne({email})
@@ -94,5 +122,28 @@ client.connect(err => {
       res.send(result.insertedCount>0)
     })
    })
+   app.get('/admins',(req,res)=>{
+    adminCollection.find({})
+    .toArray((err,document)=>{
+      res.send(document)
+    })  
+   })
+   app.get('/reviews',(req,res)=>{
+    reviewCollection.find({})
+    .toArray((err,document)=>{
+      res.send(document)
+    })  
+   })
+   app.patch("/update/:id",(req,res)=>{
+     console.log(req.params.id)
+    ordersCollection.updateOne({_id:(req.params.id)},
+    {
+        $set:{status:req.body.status}
+    }
+    )
+    .then(result=>{
+        console.log(result)
+    })
+})
 });
 app.listen(process.env.PORT|| 5000)
